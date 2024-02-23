@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using MongoDB.Driver;
 using MongoDB.Entities;
 using SearchService.Models;
+using SearchService.Services;
 
 namespace SearchService.Data
 {
@@ -23,17 +24,26 @@ namespace SearchService.Data
             .CreateAsync();
 
             var count = await DB.CountAsync<Item>();
-            if (count == 0)
-            {
-                Console.WriteLine("No items in database");
-                var auctions = await File.ReadAllTextAsync("Data/auctions.json");
-                var items = JsonSerializer.Deserialize<List<Item>>(auctions, new JsonSerializerOptions()
-                {
-                    PropertyNameCaseInsensitive = true
-                });
+            // if (count == 0)
+            // {
+            //     Console.WriteLine("No items in database");
+            //     var auctions = await File.ReadAllTextAsync("Data/auctions.json");
+            //     var items = JsonSerializer.Deserialize<List<Item>>(auctions, new JsonSerializerOptions()
+            //     {
+            //         PropertyNameCaseInsensitive = true
+            //     });
 
-                await DB.SaveAsync<Item>(items);
+            //     await DB.SaveAsync<Item>(items);
+            // }
+            using var scope = app.Services.CreateAsyncScope();
+            var httpclient = scope.ServiceProvider.GetRequiredService<AuctoinServiceHttpClient>();
+            var items = await httpclient.GetItemsForSearchDB();
+            Console.WriteLine(string.Format("{0} items from auction service", items.Count));
+            if (items.Count > 0)
+            {
+                await DB.SaveAsync(items);
             }
+
         }
     }
 }
